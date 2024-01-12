@@ -284,9 +284,10 @@ Ube {
 	}
 
 	recordTape {
-		arg tape=1,seconds=30,recLevel=1.0;
+		arg tape=1,seconds=30,recLevel=1.0,sender;
 		var tapeid="tape"++tape;
 		("record tape").postln;
+    sender.sendMsg("/recording",1); // send value to touchdesigner
 		Buffer.alloc(server,server.sampleRate*seconds,2,{ arg buf; //stereo recording
 			// silence all output to prevent feedback?
 			syns.at("fx").set(\amp,0);
@@ -295,7 +296,7 @@ Ube {
 			// initiate recorder
 			("[ube] record"+buf.bufnum+tape+seconds+recLevel).postln;
 			syns.put("record"++tape,Synth.head(server,"recorder",[\buf,buf,\recLevel,recLevel,\preLevel,0]).onFree({
-				("[ube] recording to buf"+buf.bufnum+"finished.").postln;
+        ("[ube] recording to buf"+buf.bufnum+"finished.").postln;
 				// update the buffers in synths
 				syns.keysValuesDo({ arg k,v;
 					if (k.contains(tapeid),{
@@ -305,6 +306,7 @@ Ube {
 				});
 
 				// // update the buffer
+        /*
 				if (bufs.at(tapeid).notNil,{
           ("free bufs at "+tapeid).postln;
 					bufs.at(tapeid).free;
@@ -313,13 +315,15 @@ Ube {
           ("free monobufs at"+tapeid).postln;
 					monobufs.at(tapeid).free;
 				});
+        */
 				bufs.put(tapeid,buf);
                 // turn on the main fx again
         Routine({
-          5.wait;
+          3.wait;
 				  syns.at("fx").set(\amp,1);
           ("vol up").postln;
         }).play;
+        sender.sendMsg("/recording",0); // send value to touchdesigner
 				recording=false;
 
 			}));
