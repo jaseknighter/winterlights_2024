@@ -4,7 +4,7 @@ s.waitForBoot {
 	var sender;
 	OSCdef.freeAll;
 
-	sender = NetAddr.new("192.168.0.100", 1001); // create the NetAddr to send to TouchDesigner
+	sender = NetAddr.new("127.0.0.1", 1001); // create the NetAddr to send to TouchDesigner
 
 	SynthDef(\osc_out, {
 		//code taken from blender example: "https://scsynth.org/t/sending-osc-messages-from-sc-to-blender/4825/4"

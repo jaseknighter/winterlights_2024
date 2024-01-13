@@ -144,14 +144,14 @@ s.waitForBoot {
 		gate=1, 
     envbuf,
     //wow+flutter
-		effect_amp=0.05, wobble_exp=39,
+		effect_amp=0.5, wobble_amp=0.05, wobble_exp=39,
 		flutter_amp=0.03, flutter_fixedfreq=6, flutter_variationfreq=2;
 		var wobble_rpm = 33;
 
-		var signed_wobble = effect_amp*(SinOsc.kr(wobble_rpm/60)**wobble_exp);
+		var signed_wobble = (wobble_amp*SinOsc.kr(wobble_rpm/60)**wobble_exp);
 		var wow = Select.kr(signed_wobble > 0, signed_wobble, 0);
 		var flutter = flutter_amp*SinOsc.kr(flutter_fixedfreq+LFNoise2.kr(flutter_variationfreq));
-		var combined_defects = 1;// + wow + flutter;
+		var combined_defects = 1;//effect_amp * (wow + flutter);
 
 		// variables to store UGens later
 		var volume;
@@ -260,7 +260,7 @@ s.waitForBoot {
 
 		snd = CombC.ar(snd,0.5,Rand(0.05,0.5),2); // random delay
 		// snd = LPF.ar(snd,SinOsc.kr(0.1).exprange(20,2000)); // modulated filter
-		snd = (snd * Lag.kr((effect_amp*10)).tanh) / 2; // distortion distortion
+		snd = (snd * Lag.kr((effect_amp*10))).tanh / 2; // distortion distortion
 		// ?????
 
 		///////////////////////////////////////////////////////
@@ -513,9 +513,9 @@ OSCdef(\max30102, {|msg|
         var tapenums = [1,2,3,4,5];
         var effect_amp;
         if  (msg[4] < 0.5, {
-          effect_amp = msg[4].linlin(0,0.5,0,0.4).postln;
+          effect_amp = msg[4].linlin(0,0.5,0,0.8).postln;
         },{
-          effect_amp = msg[4].linlin(0.5,1,0.4,0).postln;
+          effect_amp = msg[4].linlin(0.5,1,0.8,0).postln;
         });
         sender.sendMsg("/ring_pressed", 1); // send value to touchdesigner
         sender.sendMsg("/ring_location", msg[4]); // send touch location to touchdesigner
