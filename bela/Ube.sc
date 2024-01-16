@@ -190,11 +190,27 @@ Ube {
 		syns.at(playid).set(\timescale,timescale);
 	}
 
-	setEffectAmp {
+	setEffect1 {
 		arg tape=1,player=1,val=1.0;
 		var tapeid="tape"++tape;
 		var playid="player"++player++tapeid;
-		syns.at(playid).set(\effect_amp,val);
+		syns.at(playid).set(\effect1,val);
+		syns.at("fx").set(\effect1,val);
+	}
+
+	setEffect2 {
+		arg tape=1,player=1,val=1.0;
+		var tapeid="tape"++tape;
+		var playid="player"++player++tapeid;
+		syns.at(playid).set(\effect2,val);
+    syns.at("fx").set(\effect2,val);
+	}
+
+	setEffectDelayTime {
+		arg tape=1,player=1,val=1;
+		var tapeid="tape"++tape;
+		var playid="player"++player++tapeid;
+		syns.at("fx").set(\delayTime,val);
 	}
 
 	playTape {
@@ -227,8 +243,8 @@ Ube {
             // envbufs.put(playid,envbuf);
             syns.put(playid,Synth.head(server,"looper",[\tape,tape,\player,player,\buf,buf,\envbuf,envbuf,\monobuf0,bufl,\monobuf1,bufr,\baseRate,rate,\amp,amp,\timescale,timescale]).onFree({
               ("[ube] player"+player+"finished with two mono bufs created.").postln;
+              syns.at("fx").set(\amp,1);
             }));
-            syns.at("fx").set(\amp,1);
             NodeWatcher.register(syns.at(playid));
 
           });
@@ -319,7 +335,7 @@ Ube {
 				bufs.put(tapeid,buf);
                 // turn on the main fx again
         Routine({
-          3.wait;
+          5.wait;
 				  syns.at("fx").set(\amp,1);
           ("vol up").postln;
         }).play;

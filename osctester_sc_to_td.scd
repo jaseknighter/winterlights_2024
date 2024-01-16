@@ -25,9 +25,9 @@ s.waitForBoot {
 		//NOTE: msg[3] is mouse x, msg[4] is mouse y, msg[5] is mouse pressed
 		msg.debug("msg");
 		//touch bar
-		// sender.sendMsg("/bar_location", msg[3]);
-		// sender.sendMsg("/bar_pressure", msg[4]);
-		// sender.sendMsg("/bar_pressed", msg[5]);
+		sender.sendMsg("/bar_location", msg[3]);
+		sender.sendMsg("/bar_pressure", msg[4]);
+		sender.sendMsg("/bar_pressed", msg[5]);
 
 		//touch ring
 		// sender.sendMsg("/ring_location", msg[3]);
@@ -35,8 +35,8 @@ s.waitForBoot {
 		// sender.sendMsg("/ring_pressed", msg[5]);
 
 		//max30102 sensor
-		sender.sendMsg("/max30102_bpm", msg[3].linlin(0,1,60,140));
-		sender.sendMsg("/max30102_pressed", msg[5]);
+		// sender.sendMsg("/max30102_bpm", msg[3].linlin(0,1,60,140));
+		// sender.sendMsg("/max30102_pressed", msg[5]);
 		// sender.sendMsg("/recording", msg[5]);
 
 	}, '/tdsend');
