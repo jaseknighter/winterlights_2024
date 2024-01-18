@@ -20,7 +20,7 @@ s.options.speakerMuted = 0;    // set true to mute the speaker amp and draw a li
 s.options.dacLevel = 0;       // sets the gain of the stereo audio dac (+dB)
 s.options.adcLevel = 0;       // sets the gain of the stereo audio adc (+dB)
 
-s.options.blockSize = 64; //16;
+s.options.blockSize = 128; //16;
 s.options.numInputBusChannels = 2; //10;
 s.options.numOutputBusChannels = 2;
 
@@ -29,10 +29,10 @@ s.waitForBoot {
   var freader = FileReader.read("laptop_ip_port.txt", true, true, delimiter:$;).postcs;
   var ip = freader[0][0]; // the port to receive from/send to TouchDesigner
   var port = freader[1][0].asInteger; // the port to send to TouchDesigner
-  var receiver = NetAddr.new(ip); // create the NetAddr to receive msgs from TouchDesigner
-	var sender = NetAddr.new(ip, port); // create the NetAddr to receive msgs from TouchDesigner
-  // var receiver = NetAddr.new("127.0.0.1"); // create the NetAddr to receive msgs from TouchDesigner
-	// var sender = NetAddr.new("127.0.0.1", 1000); // create the NetAddr to receive msgs from TouchDesigner
+  // var receiver = NetAddr.new(ip); // create the NetAddr to receive msgs from TouchDesigner
+	// var sender = NetAddr.new(ip, port); // create the NetAddr to receive msgs from TouchDesigner
+  var receiver = NetAddr.new("127.0.0.1"); // create the NetAddr to receive msgs from TouchDesigner
+	var sender = NetAddr.new("127.0.0.1", 1000); // create the NetAddr to receive msgs from TouchDesigner
   var oscReceiverFunc;
 
   var pairs;
@@ -148,11 +148,9 @@ s.waitForBoot {
 		flutter_amp=0.03, flutter_fixedfreq=6, flutter_variationfreq=2;
 		var wobble_rpm = 33;
 
-		var signed_wobble = (SinOsc.kr(wobble_amp/60)**wobble_exp);
 		// var signed_wobble = (SinOsc.kr(wobble_amp/60)**wobble_exp);
-		// var signed_wobble = (wobble_amp*SinOsc.kr(wobble_rpm/60)**wobble_exp);
-		var wow = Select.kr(signed_wobble > 0, signed_wobble, 0);
-		var flutter = flutter_amp*SinOsc.kr(flutter_fixedfreq+LFNoise2.kr(flutter_variationfreq));
+		// var wow = Select.kr(signed_wobble > 0, signed_wobble, 0);
+		// var flutter = flutter_amp*SinOsc.kr(flutter_fixedfreq+LFNoise2.kr(flutter_variationfreq));
 		var combined_defects = 1;//((wow) + flutter);
 
 		// variables to store UGens later
@@ -235,13 +233,9 @@ s.waitForBoot {
     //     gate,
     //     levelScale: 1,
     //     doneAction: Done.freeSelf);
-		
-    grain0 = GrainBuf.ar(2, Impulse.kr(gTriggerSpeed), grainSize0, monobuf0, rate, pos, 2, lfoPan, envbuf, maxGrains: 256 );
-    // grain0 = GrainBuf.ar(2, Impulse.kr(10), 0.1, monobuf0, rate, pos1, 2, lfoPan, -1 ) * gEnv;
-    grain1 = GrainBuf.ar(2, Impulse.kr(gTriggerSpeed), grainSize1, monobuf1, rate, pos, 2, lfoPan, envbuf, maxGrains: 256 );
-    // grain1 = GrainBuf.ar(2, Impulse.kr(10), grainSize1, monobuf1, rate, pos1, 2, lfoPan, envbuf, maxGrains: 64 ) * gEnv;
-    // grain1 = GrainBuf.ar(2, Impulse.kr(10), 0.1, monobuf1, rate, pos1, 2, lfoPan, -1 ) * gEnv;
-
+    grain0 = GrainBuf.ar(2, Impulse.kr(gTriggerSpeed), grainSize0, monobuf0, rate, pos, 4, lfoPan, envbuf, maxGrains: 32, mul:1 );
+    grain1 = GrainBuf.ar(2, Impulse.kr(gTriggerSpeed), grainSize1, monobuf1, rate, pos, 4, lfoPan, envbuf, maxGrains: 32, mul:1 );
+    
 		// do the panning
     // snd = snd*volume;
     // snd=Balance2.ar(grain0,grain1,lfoPan);
@@ -249,10 +243,13 @@ s.waitForBoot {
 
     //mix mono input to stereo   
     // snd=Mix.new((grain0*grainAmt)+(snd[0]*loopAmt)+(grain1*grainAmt)+(snd[1]*loopAmt));
-    snd=Mix.new((grain0*grainAmt)+(snd[0]*(1-effect2))+(grain1*grainAmt)+(snd[1]*(1-effect2)));
-		snd=[snd,snd]/(2+(1-effect2));
+    // snd=Mix.new((grain0*grainAmt)+(snd[0]*(1-effect2))+(grain1*grainAmt)+(snd[1]*(1-effect2)));
+    
+    // snd=Mix.new((grain0*grainAmt)+(snd[0]*(1-effect2))+(grain1)+(snd[1]*(1-effect2)))/2;
+		// snd=[snd,snd]/(2+(1-effect2));
 
     //mix a stereo input
+    snd=Balance2.ar(Mix.new(grain0)+(snd[0]*(1-effect2)),Mix.new((grain1)+(snd[1]*(1-effect2))),lfoPan);
     // snd=Balance2.ar(Mix.new((grain0*grainAmt)+(snd[0]*loopAmt)),Mix.new((grain1*grainAmt)+(snd[1]*loopAmt)),lfoPan);
 
 		
@@ -312,19 +309,21 @@ s.waitForBoot {
 
     // distortion distortion
 		// snd = (snd*(1-effect1))+(snd * Lag.kr(effect1*3,3)).tanh / 2; 
-    var dist = ((snd * Lag.kr(effect1*3,0.5)).tanh/2);
-		snd = (snd*(1-effect1))+dist; 
+		// snd = (snd*(1-effect1))+((snd * Lag.kr(effect1,0.25) * 3.dbamp).tanh);
 
 
 		// add some delay
-    snd = ((1-effect2)*snd)+(Lag.kr(effect2,0.5)*CombL.ar(snd,1,delaytime:0.5,decaytime:3));
+    snd = ((1-effect2)*snd)+(Lag.kr(effect2,0.25)*CombL.ar(snd,1,delaytime:Lag.kr(delayTime,delayTime*2),decaytime:3));
+    // snd = ((1-effect2)*snd)+(Lag.kr(effect2,0.25)*CombL.ar(snd,1,delaytime:0.5,decaytime:3));
+    
+    
     // snd = ((1-effect2)*snd)+(effect2*CombL.ar(snd,1,delaytime:Lag.kr(delayTime,2),decaytime:3));
 		// snd = CombC.ar(snd,0.5,delaytime:Lag.kr(effect2+0.1),decaytime:3);
 		// snd = CombC.ar(snd,0.5,delaytime:effect2+0.1,decaytime:3);
 		// snd = CombC.ar(snd,0.5,delaytime:0.5,decaytime:1);
 
 		// add some reverb
-		snd = FreeVerb2.ar(snd[0],snd[1],0.5,0.5);
+		// snd = FreeVerb2.ar(snd[0],snd[1],0.5,0.5);
 
 		// // add some analog chewing (PortedPlugins needed)
 		// snd = SelectX.ar(LFNoise2.kr(1/3).range(0,1),[
@@ -345,34 +344,29 @@ s.waitForBoot {
 
   ~tr_bar = Synth(\trillSynth_bar);
   ~tr_hex = Synth(\trillSynth_hex);
-  ~tr_ring = Synth(\trillSynth_ring);
+  // ~tr_ring = Synth(\trillSynth_ring);
   ~max30102 = Synth(\max30102);
 
 	// load the ube class
 	u=Ube.new(s);
 
-/*
-  recordAndPlay {
-    // record another tape and play it
-    recording = true;
-    Routine {
-      u.recordTape(tape:1,seconds:3,recLevel:2); 3.5.wait;
-      0.5.wait; // give time for buffer to load
-      // u.pauseTape(tape:1,player:1);
-      // u.pauseTape(tape:1,player:2);
-      // u.pauseTape(tape:1,player:3);
-      // u.pauseTape(tape:1,player:4);
-      // u.pauseTape(tape:1,player:5);
+Routine {
+	u.loadTape(tape:2,filename:thisProcess.nowExecutingPath.dirname++"/flora_wowless.wav");
+	// u.loadTape(tape:1,filename:thisProcess.nowExecutingPath.dirname++"/kalimba.wav");
 
-      u.playTape(tape:1,player:1,rate:0.5,db:3,timescale:1.0);
-      u.playTape(tape:1,player:2,rate:0.25,db:6,timescale:1.0);
-      u.playTape(tape:1,player:3,rate:0.125,db:9,timescale:1.0);
-      u.playTape(tape:1,player:4,rate:2,db:-6,timescale:1.0);
-      u.playTape(tape:1,player:5,rate:4,db:-12,timescale:1.0);
-      recording = false;
-    }.play;
-  };
-*/
+	1.wait; // give time for buffer to load
+	u.playTape(tape:2,player:1,rate:0.5,db:20,timescale:1.0);
+	u.playTape(tape:2,player:2,rate:0.25,db:20,timescale:1.0);
+	// u.playTape(tape:2,player:3,rate:0.125,db:20,timescale:1.0);
+  2.do({arg v,i;
+      u.setLfoStartFreqDivisor(tape:2,player:1+i,val:30.rand+30);
+      u.setLfoWindowFreqDivisor(tape:2,player:1+i,val:5.rand+10);
+      u.setLfoAmpFreqDivisor(tape:2,player:1+i,val:10.rand+20);
+      u.setLfoPanFreqDivisor(tape:2,player:1+i,val:10.rand+20);
+  });
+  
+
+}.play;
 
 
 OSCdef(\max30102, {|msg| 
@@ -406,8 +400,8 @@ OSCdef(\max30102, {|msg|
             0.5.wait; // give time for buffer to load
             u.playTape(tape:1,player:1,rate:0.5,db:3,timescale:1.0);
             u.playTape(tape:1,player:2,rate:0.25,db:6,timescale:1.0);
-            u.playTape(tape:1,player:3,rate:1.25,db:-9,timescale:1.0);
-            3.do({arg v,i;
+            // u.playTape(tape:1,player:3,rate:1.25,db:-9,timescale:1.0);
+            2.do({arg v,i;
               u.setLfoStartFreqDivisor(tape:1,player:1+i,val:30.rand+30);
             	u.setLfoWindowFreqDivisor(tape:1,player:1+i,val:5.rand+10);
             	u.setLfoAmpFreqDivisor(tape:1,player:1+i,val:10.rand+20);
@@ -430,8 +424,8 @@ OSCdef(\max30102, {|msg|
             0.5.wait; // give time for buffer to load
             u.playTape(tape:1,player:1,rate:0.5,db:3,timescale:1.0);
             u.playTape(tape:1,player:2,rate:0.75,db:6,timescale:1.0);
-            u.playTape(tape:1,player:3,rate:1.25,db:-9,timescale:1.0);
-            3.do({arg v,i;
+            // u.playTape(tape:1,player:3,rate:1.25,db:-9,timescale:1.0);
+            2.do({arg v,i;
               u.setLfoStartFreqDivisor(tape:1,player:1+i,val:30.rand+30);
             	u.setLfoWindowFreqDivisor(tape:1,player:1+i,val:5.rand+10);
             	u.setLfoAmpFreqDivisor(tape:1,player:1+i,val:10.rand+20);
@@ -478,7 +472,10 @@ OSCdef(\max30102, {|msg|
 
         //change grain size
         // msg[3].do({ arg v,i;
-        3.do({ arg v,i;
+
+
+
+        2.do({ arg v,i;
           var tapenums = [1,2,3,4,5];
           var triggerSpeed = msg[5].linexp(0,1,0.05,1);
           
@@ -487,13 +484,14 @@ OSCdef(\max30102, {|msg|
           // var grainSize = msg[v+4].linlin(0,1,0.05,1.5).postln;
           // var grainSpeed = msg[v+5].linexp(0,1,0.1,5);
           
-          var rates = [0.125,0.25, 0.3, 0.5,0.75,1,1.25,1.3, 1.5,1.51,1.52,1.53,1.54,1.55,1.56,1.57,1.58,1.59,1.6, 1.75, 2];
-          var rate = rates[msg[4].linlin(0,1,20,0).floor];
+          var rates = [0.25, 0.3, 0.5,0.75,1,1.25,1.3];
+          var rate = rates[msg[4].linlin(0,1,6,0).floor];
+          // var rates = [0.125,0.25, 0.3, 0.5,0.75,1,1.25,1.3, 1.5,1.51,1.52,1.53,1.54,1.55,1.56,1.57,1.58,1.59,1.6, 1.75, 2];
+          // var rate = rates[msg[4].linlin(0,1,20,0).floor];
           // var rate = rates[msg[4].linlin(0,1,9,0).floor];
           // var rate = msg[4].linlin(0,1,2,0.25);
           
-          u.setRate(tape:tapenums[0],player:1,val:rate);
-
+          u.setRate(tape:tapenums[i],player:1,val:rate);
           u.setGrainSize0(tape:tapenums[v],player:1,val:grainSize);
           u.setGrainSize1(tape:tapenums[v],player:1,val:grainSize*2);
 
@@ -539,7 +537,7 @@ OSCdef(\max30102, {|msg|
       sender.sendMsg("/ring_location", msg[4]); // send touch location to touchdesigner
       sender.sendMsg("/ring_pressure", msg[5]); // send touch pressure to touchdesigner
       
-      3.do({ arg v,i;
+      2.do({ arg v,i;
         // var loopAmt = msg[4];
         // var grainAmt = msg[4].linlin(0,1,1,0);   
         // (loopAmt + " / " + grainAmt).postln;       
@@ -552,6 +550,7 @@ OSCdef(\max30102, {|msg|
         
         // netAddr.sendMsg("/ring_loc_val", effect1); // send value to touchdesigner
         u.setEffect1(tape:tapenums[v],player:1,val:effect1);
+        u.setEffect1(tape:tapenums[v],player:2,val:effect1);
       })
 
     });
@@ -561,7 +560,7 @@ OSCdef(\max30102, {|msg|
           ring_pressed = false; 
           ("off").postln;
           sender.sendMsg("/ring_pressed", 0); // send value to touchdesigner
-          3.do({ arg v,i;
+          2.do({ arg v,i;
             u.setEffect1(tape:tapenums[v],player:1,val:0);
           });
         }
@@ -581,10 +580,12 @@ OSCdef(\max30102, {|msg|
       sender.sendMsg("/hex_pressed", 1); // send value to touchdesigner
       sender.sendMsg("/hex_location", msg[4]); // send touch location to touchdesigner
       sender.sendMsg("/hex_pressure", msg[5]); // send touch pressure to touchdesigner
-      3.do({ arg v,i;
+      2.do({ arg v,i;
         var dTime = (effect2)+0.1; //delayTimes[dIndex];
         u.setEffect2(tape:tapenums[v],player:1,val:effect2);
         u.setEffectDelayTime(tape:tapenums[v],player:1,val:dTime);
+        u.setEffect2(tape:tapenums[v],player:2,val:effect2);
+        u.setEffectDelayTime(tape:tapenums[v],player:2,val:dTime);
       })
 
     });
@@ -593,7 +594,7 @@ OSCdef(\max30102, {|msg|
       if (hex_pressed == true){
         hex_pressed = false; 
         ("off").postln;
-        3.do({ arg v,i;
+        2.do({ arg v,i;
           u.setEffect2(tape:tapenums[v],player:1,val:0);
         });
 
