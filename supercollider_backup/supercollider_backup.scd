@@ -106,8 +106,6 @@ s.waitForBoot({
 		// ----- DONE ADDING YOUR OWN MODULATION HERE ------ //
 		///////////////////////////////////////////////////////
 
-
-
 		// calculate the final rate
 		var rate=Lag.kr(lfoRate*(2*lfoForward-1),1)*BufRateScale.kr(buf);
 
@@ -167,7 +165,6 @@ s.waitForBoot({
 		// snd=Balance2.ar(grain0,grain1,lfoPan);
 		// snd=Balance2.ar(snd[0],snd[1],lfoPan);
 		snd=Balance2.ar(grain0+snd[0],grain1+snd[1],lfoPan);
-		// snd=Balance2.ar(snd[0],grain1+snd[1],lfoPan);
 
 
 		///////////////////////////////////////////////////////
@@ -246,8 +243,8 @@ Routine {
 	u.playTape(tape:1,player:1,rate:0.5,db:0,timescale:1.0);
 	u.playTape(tape:1,player:2,rate:0.25,db:0,timescale:1.0);
 	u.playTape(tape:1,player:3,rate:0.125,db:0,timescale:1.0);
-
-
+	u.playTape(tape:1,player:4,rate:1.5,db:0,timescale:1.0);
+	u.playTape(tape:1,player:5,rate:1,db:0,timescale:1.0);
 	// u.gui;
 }.play;
 )
