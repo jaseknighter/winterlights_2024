@@ -107,7 +107,7 @@ s.waitForBoot({
 		///////////////////////////////////////////////////////
 
 		// calculate the final rate
-		var rate=Lag.kr(lfoRate*(2*lfoForward-1),1)*BufRateScale.kr(buf);
+		var rate=Lag.kr(lfoRate*(2*lfoForward-1),5)*BufRateScale.kr(buf);
 
 		// modulate the start/stop
 		posStart = lfoStart;
@@ -118,12 +118,12 @@ s.waitForBoot({
 
 
 		// playhead 1 has a play position and buffer reader
-		pos1=Phasor.ar(trig:1-switch,rate:rate*combined_defects,end:frames,resetPos:((lfoForward>0)*posStart)+((lfoForward<1)*posEnd));
+		pos1=Phasor.ar(trig:1-switch,rate:rate,end:frames,resetPos:((lfoForward>0)*posStart)+((lfoForward<1)*posEnd));
 		snd1=BufRd.ar(2,buf,pos1,1.0,4);
 
 
 		// playhead 2 has a play position and buffer reader
-		pos2=Phasor.ar(trig:switch,  rate:rate*combined_defects,end:frames,resetPos:((lfoForward>0)*posStart)+((lfoForward<1)*posEnd));
+		pos2=Phasor.ar(trig:switch,  rate:rate,end:frames,resetPos:((lfoForward>0)*posStart)+((lfoForward<1)*posEnd));
 		snd2=BufRd.ar(2,buf,pos2,1.0,4);
 
 		// current position changes according to the swtich
@@ -186,7 +186,7 @@ s.waitForBoot({
 		///////////////////////////////////////////////////////
 
 		// final output
-		Out.ar(0,snd*volume/5);
+		Out.ar(0,snd*volume/3);
 		// Out.ar(0,snd*volume*2);
 	}).send(s);
 
@@ -242,9 +242,22 @@ Routine {
 	1.wait; // give time for buffer to load
 	u.playTape(tape:1,player:1,rate:0.5,db:0,timescale:1.0);
 	u.playTape(tape:1,player:2,rate:0.25,db:0,timescale:1.0);
-	u.playTape(tape:1,player:3,rate:0.125,db:0,timescale:1.0);
-	u.playTape(tape:1,player:4,rate:1.5,db:0,timescale:1.0);
-	u.playTape(tape:1,player:5,rate:1,db:0,timescale:1.0);
-	// u.gui;
+	u.playTape(tape:1,player:3,rate:0.125,db:3,timescale:1.0);
+	// u.playTape(tape:1,player:4,rate:2,db:-3,timescale:1.0);
+	// u.playTape(tape:1,player:5,rate:1,db:-2,timescale:1.0);
+	3.do({arg v,i;
+		// i.postln;
+  	u.setR1(tape:1,player:1+i,val:30.rand+60);
+  	u.setR2(tape:1,player:1+i,val:(2*pi).rand);
+  	u.setR3(tape:1,player:1+i,val:60.rand+120);
+  	u.setR4(tape:1,player:1+i,val:(2*pi).rand);
+  	u.setR5(tape:1,player:1+i,val:5.rand+15);
+  	u.setR6(tape:1,player:1+i,val:2.rand);
+  	u.setR7(tape:1,player:1+i,val:10.rand+30);
+  	u.setR8(tape:1,player:1+i,val:(2*pi));
+  	u.setR9(tape:1,player:1+i,val:10.rand+30);
+  	u.setR10(tape:1,player:1+i,val:(2*pi).rand);
+  });
+	u.gui;
 }.play;
 )
