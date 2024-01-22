@@ -24,8 +24,8 @@ s.waitForBoot {
   var port = freader[1][0].asInteger; // the port to send to TouchDesigner
   // var receiver = NetAddr.new(ip); // create the NetAddr to receive msgs from TouchDesigner
   // var receiver = NetAddr.new("127.0.0.1"); // create the NetAddr to receive msgs from TouchDesigner
-	// var sender = NetAddr.new(ip, port); // create the NetAddr to receive msgs from TouchDesigner
-	var sender = NetAddr.new("127.0.0.1", 7562); // create the NetAddr to receive msgs from TouchDesigner
+	var sender = NetAddr.new(ip, port); // create the NetAddr to receive msgs from TouchDesigner
+	// var sender = NetAddr.new("127.0.0.1", 7562); // create the NetAddr to receive msgs from TouchDesigner
   var oscReceiverFunc;
 
   var pairs;
@@ -34,8 +34,9 @@ s.waitForBoot {
   //var i2c_address = 0x18;
   var i2c_address_bar = 0x20; //
   var i2c_address_hex = 0x40; //
-  var i2c_address_ring = 0x38; //
-  var noiseThreshold = 0.2; //0.02; // float: 0-0.0625, with 0.0625 being the highest noise thresh
+  var i2c_address_ring1 = 0x38; //
+  var i2c_address_ring2 = 0x3e; //
+  var noiseThreshold = 0.0625; //0.02; // float: 0-0.0625, with 0.0625 being the highest noise thresh
   var prescalerOpt = 2; // int: 1-8 with 1 being the highest sensitivity
   // var touchsigs = DC.ar(0).dup(3); // use 3 touches
   var centroids_bar;
@@ -45,7 +46,8 @@ s.waitForBoot {
 
   var hex_pressed = false;
   var bar_pressed = false;
-  var ring_pressed = false;
+  var ring_pressed1 = false;
+  var ring_pressed2 = false;
   var selectedEnvelope = 1;
   var recording = false;
 
@@ -96,18 +98,26 @@ s.waitForBoot {
     // ("max30102 initialized").postln;
   }).send(s);
   
-  SynthDef(\trillSynth_ring, {|t_recalibrate_ring=0.0|
+  SynthDef(\trillSynth_ring1, {|t_recalibrate_ring=0.0|
     // returns an array with format: [num_active_touches, t1_pos, t1_size, t2_pos, t2_size, t3_pos, t3_size, t4_pos, t4_size, t5_pos, t5_size]
-    centroids_ring = TrillCentroids.kr(i2c_bus, i2c_address_ring, noiseThreshold, prescalerOpt, t_recalibrate_ring);		
-		SendReply.kr(Impulse.kr(10), "/trill_ring", centroids_ring);
-    ("trill ring initialized").postln;
+    centroids_ring = TrillCentroids.kr(i2c_bus, i2c_address_ring1, noiseThreshold, prescalerOpt, t_recalibrate_ring);		
+		SendReply.kr(Impulse.kr(10), "/trill_ring1", centroids_ring);
+    ("trill ring 1 initialized").postln;
+  }).send(s);
+
+  SynthDef(\trillSynth_ring2, {|t_recalibrate_ring=0.0|
+    // returns an array with format: [num_active_touches, t1_pos, t1_size, t2_pos, t2_size, t3_pos, t3_size, t4_pos, t4_size, t5_pos, t5_size]
+    centroids_ring = TrillCentroids.kr(i2c_bus, i2c_address_ring2, noiseThreshold, prescalerOpt, t_recalibrate_ring);		
+		SendReply.kr(Impulse.kr(10), "/trill_ring2", centroids_ring);
+    ("trill ring 2 initialized").postln;
   }).send(s);
 
 
   s.sync;
   s.queryAllNodes(queryControls: false);
 
-  ~tr_ring = Synth(\trillSynth_ring);
+  ~tr_ring1 = Synth(\trillSynth_ring1);
+  ~tr_ring2 = Synth(\trillSynth_ring2);
   ~max30102 = Synth(\max30102);
 
 
@@ -115,31 +125,31 @@ s.waitForBoot {
 OSCdef(\max30102, {|msg| 
 
   if (max30102_pressed == true,{
-      ("max30102: " 
+      ("fmax30102: " 
         + "ir_bpm: " + msg[3] + ", "
         // + "ir_avg_dc_est: " + msg[4] + ", "
       ).postln;
-      sender.sendMsg("/max30102",msg[3]);
+      sender.sendMsg("/fmax30102_bpm",msg[3]);
 
       // sender.sendMsg("/max30102_bpm", msg[3]); // send value to touchdesigner
   });
 
   if (msg[4] == 0 && max30102_pressed == true,{
     max30102_pressed = false;
-    ("max30102 released").postln;
-      sender.sendMsg("/max30102_pressed", 0); // send value to touchdesigner
+    ("follower: fmax30102 released"+ msg[4]).postln;
+      sender.sendMsg("/fmax30102_pressed", 0); // send value to touchdesigner
 
   });
   if (max30102_pressed==false,{
     if ((msg[4] > 1000), {
       max30102_pressed = true;
-      sender.sendMsg("/max30102_pressed", 1); // send value to touchdesigner
-      ("max30102 pressed").postln;
+      sender.sendMsg("/fmax30102_pressed", 1); // send value to touchdesigner
+      ("follower fmax30102 pressed").postln;
     });
     if ((msg[4] < -1000), {
       max30102_pressed = true;
-      sender.sendMsg("/max30102_pressed", 1); // send value to touchdesigner
-      ("max30102 presed").postln;
+      sender.sendMsg("/fmax30102_pressed", 1); // send value to touchdesigner
+      ("follower fmax30102 presed").postln;
     });
   });
 
@@ -159,25 +169,47 @@ OSCdef(\max30102, {|msg|
 
 
 
- OSCdef(\trill_ring, {|msg| 
+ OSCdef(\trill_ring1, {|msg| 
     if (recording == false && msg[3] == 1,{
-      if (ring_pressed == false){
-        ring_pressed = true
+      if (ring_pressed1 == false){
+        ring_pressed1 = true
         // (msg[4] + " / " + msg[5]).postln;
       };
-      sender.sendMsg("/ring_pressed", 1); // send value to touchdesigner
-      sender.sendMsg("/ring_location", msg[4]); // send touch location to touchdesigner
-      sender.sendMsg("/ring_pressure", msg[5]); // send touch pressure to touchdesigner
+      sender.sendMsg("/fring1_pressed", 1); // send value to touchdesigner
+      sender.sendMsg("/fring1_location", msg[4]); // send touch location to touchdesigner
+      sender.sendMsg("/fring1_pressure", msg[5]); // send touch pressure to touchdesigner
     });
 
-    if (recording == false && msg[3] == 0,{
-        if (ring_pressed == true){
-          ring_pressed = false; 
-          ("off").postln;
-          sender.sendMsg("/ring_pressed", 0); // send value to touchdesigner
+    if (msg[3] == 0,{
+        if (ring_pressed1 == true){
+          ring_pressed1 = false; 
+          ("ring 1 off").postln;
+          sender.sendMsg("/fring1_pressed", 0); // send value to touchdesigner
         }
     });
-  }, "/trill_ring");
+  }, "/trill_ring1");
+ 
+
+ OSCdef(\trill_ring2, {|msg| 
+    ("ring 2 msg[3]: " + msg[3]).postln;
+    if (msg[3] == 1,{
+      if (ring_pressed2 == false){
+        ring_pressed2 = true
+        // (msg[4] + " / " + msg[5]).postln;
+      };
+      sender.sendMsg("/fring2_pressed", 1); // send value to touchdesigner
+      sender.sendMsg("/fring2_location", msg[4]); // send touch location to touchdesigner
+      sender.sendMsg("/fring2_pressure", msg[5]); // send touch pressure to touchdesigner
+    });
+
+    if (msg[3] == 0,{
+        if (ring_pressed2 == true){
+          ring_pressed2 = false; 
+          ("ring 2 off").postln;
+          sender.sendMsg("/fring2_pressed", 0); // send value to touchdesigner
+        }
+    });
+  }, "/trill_ring2");
  
 
 }
