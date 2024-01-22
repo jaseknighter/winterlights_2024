@@ -34,7 +34,7 @@
 
 // flutter and wow code from: "https://sccode.org/1-5bP"
 
-// run this code first to define the looper
+// #1 run this code first to define the looper
 (
 s.waitForBoot({
 	var pairs;
@@ -207,91 +207,16 @@ s.waitForBoot({
 		// collect the sound coming from the bus "0" on 2 channels (stereo)
 		var sig;
 		var snd=In.ar(0,2);
-		// var snd=[LFSaw.ar(100),LFSaw.ar(101)];
 
-		// Adapted from @madskjeldgaard's Sleet
-		// https://github.com/madskjeldgaard/Sleet/blob/master/modules/delay.scd
-		// var chpredelay=MouseY.kr(0.01,0.5)/*0.08*/,
-		// var chpredelay=0.08,
-		var chpredelay=(Lag.ar(LorenzL.ar(MouseX.kr(0.1, 2).range(0.01,0.1)))),
-		// chrate=MouseX.kr(0.05,0.3)/*0.05*/,
-		// chrate=(Lag.ar(LorenzL.ar(MouseX.kr(1, 2000)),3e-3)).range(0.01,0.5),
-		chrate=(Lag.ar(LorenzL.ar(MouseX.kr(1, 20).range(0,1)))),
-		chdepth=0.1, chphasediff=0.5;
-
-		var trig = Impulse.kr(Lag.ar(LorenzL.ar(10).range(1,10)));
-    var seq = Demand.kr(trig, 0, Dseq([400,99,791,2000,200],inf)).lag(0.01);
-    var env = Env.perc(0.1,0.9).kr(gate: trig, timeScale: envdur/tempo);
-
-		var numDelays = 4,numchans=2;
-		// chpredelay.poll;
-		sig = Array.fill(numchans, {|cNum=2|
-			var input = snd[cNum] * numDelays.reciprocal;
-			var modulators = Array.fill(numDelays, { arg i;
-				LFPar.kr(chrate.linexp(0.0,1.0,0.001,10.0) * {rrand(0.94, MouseX.kr(0.94,15)/*1.06*/)}, chphasediff * i, chdepth, chpredelay)
-			});
-			DelayC.ar(input, 0.2, modulators).sum;
-		});
-
-		//LPG
-		sig = LPG.ar(
-			input: snd,
-			controlinput: env,
-			controloffset: MouseY.kr(0.0,0.2),//LFSaw.kr(0.1).range(0.0,0.2),
-			controlscale: MouseX.kr(0.01,0.95),//LFNoise2.kr(0.1).range(0.4,0.95),
-			vca: LFSaw.kr(0.1).range(0,0.1),//LFNoise2.kr(1).unipolar,
-			resonance:LFSaw.kr(0.1).range(0.1,1),
-			lowpassmode:1,
-			linearity:1
-		);
-		// sig=LPG.ar(sig, Impulse.kr(10), controloffset: 1, controlscale: 1, vca: 1, resonance: 1.5, lowpassmode: 1, linearity: 1);
-		snd=((1-MouseY.kr(0,1))*snd)+((MouseY.kr(0,1)*sig));
-		// snd=sig;
-
-		// snd=sig;//((1-MouseY.kr(0,1))*snd)+((MouseY.kr(0,1)*sig));
-		// chrate.poll;
-
-    /*var wet,numDelays = 4, lfos, maxDelayTime, minDelayTime;
-		var rate = MouseX.kr(0,0.5);
-		var depth = MouseX.kr(0,0.5);
-		// rate.poll;
-    rate = Select.kr(rate > 0.5, [
-      LinExp.kr(rate, 0.0, 0.5, 0.025, 0.125),
-      LinExp.kr(rate, 0.5, 1.0, 0.125, 2)
-    ]);
-    maxDelayTime = LinLin.kr(depth, 0.0, 1.0, 0.016, 0.052);
-    minDelayTime = LinLin.kr(depth, 0.0, 1.0, 0.012, 0.022);
-    wet = snd * numDelays.reciprocal;
-    lfos = Array.fill(numDelays, {|i|
-      LFPar.kr(
-        rate * {rrand(0.95, 1.05)},
-        \phasediff.kr(0.9) * i,
-        (maxDelayTime - minDelayTime) * 0.5,
-        (maxDelayTime + minDelayTime) * 0.5,
-      )
-    });
-    snd=snd+(MouseY.kr(0,1)*DelayC.ar(wet, (maxDelayTime * 2), lfos).sum);*/
-
-		// add some nice tape compression
-		// snd = AnalogTape.ar(snd,0.9,MouseX.kr(0,1.3),0.5,4);
 		// add some delay
-		// snd = CombC.ar(snd,0.5,delaytime:0.25,decaytime:3);
-		// snd = CombC.ar(snd,0.5,delaytime:0.25*MouseY.kr(0.005,0.05)+LFSaw.kr(5).range(0.0001,0.0009),decaytime:3.1);
-		// snd = CombC.ar(snd,0.5,delaytime:0.25*MouseY.kr(0.01,2),decaytime:3.1);
-		// snd = CombC.ar(snd,0.5,delaytime:MouseY.kr(0.1,0.5),decaytime:-5);
+		snd = CombC.ar(snd,0.5,delaytime:0.25,decaytime:3);
 
 		// add some reverb
-		// snd = SelectX.ar(LFNoise2.kr(1/3).range(0.1,0.5),[
-		// 	snd,
-		// 	FreeVerb2.ar(snd[0],snd[1],50,roomSize)
-		// 	//Fverb.ar(snd[0],snd[1],50,decay:LFNoise2.kr(1/3).range(70,90))
-		// ]);
+		snd = SelectX.ar(LFNoise2.kr(1/3).range(0.1,0.5),[
+			snd,
+			FreeVerb2.ar(snd[0],snd[1],50,MouseY.kr(1,0))
+		]);
 
-		// add some analog chewing (PortedPlugins needed)
-		// snd = SelectX.ar(LFNoise2.kr(1/3).range(0,1),[
-		// 	snd,
-		// 	AnalogChew.ar(snd);
-		// ]);
 
 
 		///////////////////////////////////////////////////////
@@ -311,92 +236,18 @@ s.waitForBoot({
 });
 )
 
-// run this code block to record from your sound input device
-(
-Routine{
-	u.recordTape(tape:1,seconds:3,recLevel:4); 3.5.wait;
-	u.playTape(tape:1,player:1,rate:0.5,db:5,timescale:1.0);
-	u.playTape(tape:1,player:2,rate:0.25,db:5,timescale:1.0);
-	// u.playTape(tape:1,player:3,rate:0.125,db:5,timescale:1.0);
-	// u.playTape(tape:1,player:4,rate:2,db:-20,timescale:1.0);
-	// u.playTape(tape:1,player:5,rate:40,db:-20,timescale:10.0);
-	0.5.wait;
-  2.do({arg v,i;
-  	i.postln;
-  	u.setR1(tape:1,player:1+i,val:30.rand+60);
-  	u.setR2(tape:1,player:1+i,val:(2*pi).rand);
-  	u.setR3(tape:1,player:1+i,val:60.rand+120);
-  	u.setR4(tape:1,player:1+i,val:(2*pi).rand);
-  	u.setR5(tape:1,player:1+i,val:5.rand+15);
-  	u.setR6(tape:1,player:1+i,val:2.rand);
-  	u.setR7(tape:1,player:1+i,val:10.rand+30);
-  	u.setR8(tape:1,player:1+i,val:(2*pi));
-  	u.setR9(tape:1,player:1+i,val:10.rand+30);
-  	u.setR10(tape:1,player:1+i,val:(2*pi).rand);
-  });
-
-	u.gui;
-}.play;
-)
-
-// run this code block to load a file
-// note: if you want to add additional files, you can find the folder by executing:
-//      thisProcess.nowExecutingPath.dirname;
+// #2 run this code second to load a file and start playing three versions of it
 (
 Routine {
 	u.loadTape(tape:1,filename:thisProcess.nowExecutingPath.dirname++"/flora_wowless.wav");
 	// u.loadTape(tape:1,filename:thisProcess.nowExecutingPath.dirname++"/kalimba.wav");
 
 	1.wait; // give time for buffer to load
-	u.playTape(tape:1,player:1,rate:0.5,db:5,timescale:1.0);
-	u.playTape(tape:1,player:2,rate:0.25,db:5,timescale:1.0);
-	u.playTape(tape:1,player:3,rate:0.125,db:5,timescale:1.0);
-	u.playTape(tape:1,player:4,rate:2,db:-20,timescale:1.0);
-	u.playTape(tape:1,player:5,rate:40,db:-20,timescale:10.0);
-  5.do({arg v,i;
-  	i.postln;
-  	u.setR1(tape:1,player:1+i,val:30.rand+60);
-  	u.setR2(tape:1,player:1+i,val:(2*pi).rand);
-  	u.setR3(tape:1,player:1+i,val:60.rand+120);
-  	u.setR4(tape:1,player:1+i,val:(2*pi).rand);
-  	u.setR5(tape:1,player:1+i,val:5.rand+15);
-  	u.setR6(tape:1,player:1+i,val:2.rand);
-  	u.setR7(tape:1,player:1+i,val:10.rand+30);
-  	u.setR8(tape:1,player:1+i,val:(2*pi));
-  	u.setR9(tape:1,player:1+i,val:10.rand+30);
-  	u.setR10(tape:1,player:1+i,val:(2*pi).rand);
-  });
+	u.playTape(tape:1,player:1,rate:0.5,db:0,timescale:1.0);
+	u.playTape(tape:1,player:2,rate:0.25,db:0,timescale:1.0);
+	u.playTape(tape:1,player:3,rate:0.125,db:0,timescale:1.0);
 
-  u.gui;
+
+	// u.gui;
 }.play;
 )
-1.0.rand;
-(
-  5.do({arg v,i;
-	// var rnd = 2.sum3rand;
-	   var rnd = 1.bilinrand;
-	   rnd.postln;
-	// u.setRate(tape:1,player:i+1,rate:rnd);
-	u.setR9(tape:1,player:i+1,val:1); // LFO for the panning (default: `Rand(10,30)`)
-  })
-)
-u.setRate(tape:1,player:5,rate:1);
-u.setTimescale(tape:1,player:1,timescale:2);
-// u.pausePlayer(tape:1,player:1,val:1);
-u.restartPlayer(tape:1,player:1,val:1);
-
-// u.setRX functions change various settings for the looper
-// (see the looper SynthDef above for details)
-// each function only applies to a single player (by default there are 5 players running for tape 1)
-u.setR1(tape:1,player:1,val:10); // LFO param for start point (default: `Rand(30,60)`)
-u.setR2(tape:1,player:1,val:10); // LFO param for start point (default: `Rand(hi:2*pi)`)
-u.setR3(tape:1,player:1,val:1); // LFO param for the window length (default: `Rand(60,120)`)
-u.setR4(tape:1,player:1,val:1); // LFO param for the window length (default: `Rand(hi:2*pi)`)
-u.setR5(tape:1,player:1,val:1); // LFO for switching between forward and reverse (default: `Rand(5,15)`)
-u.setR6(tape:1,player:1,val:1); // LFO for switching between forward and reverse (default: `Drand([0,1],inf)`)
-u.setR7(tape:1,player:1,val:1); // LFO for the volume (default: `Rand(10,30)`)
-u.setR8(tape:1,player:1,val:1); // LFO for the volume (default: `Rand(hi:2*pi)`)
-u.setR9(tape:1,player:1,val:1); // LFO for the panning (default: `Rand(10,30)`)
-u.setR10(tape:1,player:1,val:1); // LFO for the panning (default: `Rand(hi:2*pi)`)
-
-
