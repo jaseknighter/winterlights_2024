@@ -109,7 +109,7 @@ s.waitForBoot {
     // returns an array with format: [num_active_touches, t1_pos, t1_size, t2_pos, t2_size, t3_pos, t3_size, t4_pos, t4_size, t5_pos, t5_size]
     centroids_ring = TrillCentroids.kr(i2c_bus, i2c_address_ring2, noiseThreshold, prescalerOpt, t_recalibrate_ring);		
 		SendReply.kr(Impulse.kr(10), "/trill_ring2", centroids_ring);
-    ("trill ring 2 initialized").postln;
+    // ("trill ring 2 initialized").postln;
   }).send(s);
 
 
@@ -191,7 +191,6 @@ OSCdef(\max30102, {|msg|
  
 
  OSCdef(\trill_ring2, {|msg| 
-    ("ring 2 msg[3]: " + msg[3]).postln;
     if (msg[3] == 1,{
       if (ring_pressed2 == false){
         ring_pressed2 = true

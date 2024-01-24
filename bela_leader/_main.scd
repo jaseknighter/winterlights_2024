@@ -16,7 +16,7 @@ s.options.maxLogins = 8;
 s.options.pgaGainLeft = 5;     // sets the pregain for the left audio input (dB)
 s.options.pgaGainRight = 5;    // sets the pregain for the right audio input (dB)
 s.options.headphoneLevel = 0; //-1; // sets the headphone level (-dB)
-s.options.speakerMuted = 0;    // set true to mute the speaker amp and draw a little less power
+s.options.speakerMuted = true;    // set true to mute the speaker amp and draw a little less power
 s.options.dacLevel = 0;       // sets the gain of the stereo audio dac (+dB)
 s.options.adcLevel = 0;       // sets the gain of the stereo audio adc (+dB)
 
@@ -29,8 +29,8 @@ s.waitForBoot {
   var freader = FileReader.read("laptop_ip_port.txt", true, true, delimiter:$;).postcs;
   var ip = freader[0][0]; // the port to receive from/send to TouchDesigner
   var port = freader[1][0].asInteger; // the port to send to TouchDesigner
-  // var sender = NetAddr.new(ip, port); // create the NetAddr to send msgs
-  var sender = NetAddr.new("127.0.0.1", 1000); // create the NetAddr to send msgs
+  var sender = NetAddr.new(ip, port); // create the NetAddr to send msgs
+  // var sender = NetAddr.new("127.0.0.1", 1000); // create the NetAddr to send msgs
   
   
   var follower_freader = FileReader.read("bela_follower_ip.txt", true, true, delimiter:$;).postcs;
@@ -46,7 +46,8 @@ s.waitForBoot {
   var i2c_address_bar = 0x20; //
   var i2c_address_hex = 0x40; //
   var i2c_address_ring = 0x38; //
-  var noiseThreshold = 0.0625; //0.02; // float: 0-0.0625, with 0.0625 being the highest noise thresh
+
+  var noiseThreshold = 0.02; //0.02; // float: 0-0.0625, with 0.0625 being the highest noise thresh
   var prescalerOpt = 2; // int: 1-8 with 1 being the highest sensitivity
   // var touchsigs = DC.ar(0).dup(3); // use 3 touches
   var centroids_bar;
@@ -71,7 +72,7 @@ s.waitForBoot {
 	thisProcess.openUDPPort(57120); 
 	thisProcess.openUDPPort(7562); 
   // OSCFunc.trace(true); // Turn posting on
-  ("ip/port: "+ip +"/"+port).postln;
+  ("laptop ip/port: "+ip +"/"+port).postln;
   ("follower ip: "+follower_ip).postln;
   ("receiver: " + receiver).postln;
 
@@ -79,7 +80,7 @@ s.waitForBoot {
 	OSCFunc({ arg msg, time, addr, recvPort;
 		// ("received ring pressed: " + [msg, time, addr, recvPort]).postln;
 		("fmax30102 bpm: " + msg).postln;
-    sender.sendMsg("/fmax30102_bpm", msg); // send value to touchdesigner
+    sender.sendMsg("/fmax30102_bpm", msg[1]); // send value to touchdesigner
 	}, '/fmax30102_bpm', receiver);
 
 	OSCFunc({ arg msg, time, addr, recvPort;
@@ -153,21 +154,35 @@ s.waitForBoot {
 	OSCFunc({ arg msg, time, addr, recvPort;
 		// ("received ring pressed: " + [msg, time, addr, recvPort]).postln;
 		sender.sendMsg("/fring2_pressed", msg[1]); // send value to touchdesigner    
-    ("received ring2 pressed: " + msg[1]).postln;
+    // ("received ring2 pressed: " + msg[1]).postln;
 	}, '/fring2_pressed', receiver);
 	
   OSCFunc({ arg msg, time, addr, recvPort;
+    var effect3;
 		// ("received ring pressed: " + [msg, time, addr, recvPort]).postln;
-		sender.sendMsg("/fring2_location", msg[1]); // send touch location to touchdesigner
-    ("received ring2 location: " + msg[1]).postln;
+		// ("received ring1 location: " + msg[1]).postln;
+    if (msg[1] < 0.5, {
+      effect3 = msg[1].linlin(0,0.5,0,1);
+    },{
+      effect3 = msg[1].linlin(0.5,1,1,0);
+    });
+    ("effect3: " + effect3).postln;
+    sender.sendMsg("/fring2_location", msg[1]); // send touch location to touchdesigner
+    2.do({ arg v,i;        
+      var tapenums = [1,2,3,4,5];
+      u.setEffect3(tape:tapenums[v],player:1,val:effect3);
+      u.setEffect3(tape:tapenums[v],player:2,val:effect3);
+    })
+
 	}, '/fring2_location', receiver);
 	
   OSCFunc({ arg msg, time, addr, recvPort;
 		// ("received ring pressed: " + [msg, time, addr, recvPort]).postln;
 		sender.sendMsg("/fring2_pressure", msg[1]); // send touch pressure to touchdesigner
-    ("received ring2 pressure: " + msg[1]).postln;
+    // ("received ring2 pressure: " + msg[1]).postln;
 	}, '/fring2_pressure', receiver);
 
+  s.sync;
 
   /////////////////////////////////////
   //code for receiving messages from onboard trill sensors
@@ -213,21 +228,26 @@ s.waitForBoot {
     ("trill bar initialized").postln;
   }).send(s);
 
-  SynthDef(\trillSynth_hex, {|t_recalibrate_hex=0.0|
+  SynthDef(\trillSynth_hex, {|t_recalibrate_hex=1.0|
     // returns an array with format: [num_active_touches, t1_pos, t1_size, t2_pos, t2_size, t3_pos, t3_size, t4_pos, t4_size, t5_pos, t5_size]
     centroids_hex = TrillCentroids.kr(i2c_bus, i2c_address_hex, noiseThreshold, prescalerOpt, t_recalibrate_hex);		
 		SendReply.kr(Impulse.kr(2), "/trill_hex", centroids_hex);
     ("trill hex initialized").postln;
   }).send(s);
   
-  SynthDef(\trillSynth_ring, {|t_recalibrate_ring=0.0|
-    // returns an array with format: [num_active_touches, t1_pos, t1_size, t2_pos, t2_size, t3_pos, t3_size, t4_pos, t4_size, t5_pos, t5_size]
-    centroids_ring = TrillCentroids.kr(i2c_bus, i2c_address_ring, noiseThreshold, prescalerOpt, t_recalibrate_ring);		
-		SendReply.kr(Impulse.kr(10), "/trill_ring", centroids_ring);
-    ("trill ring initialized").postln;
-  }).send(s);
+  // SynthDef(\trillSynth_ring, {|t_recalibrate_ring=0.0|
+  //   // returns an array with format: [num_active_touches, t1_pos, t1_size, t2_pos, t2_size, t3_pos, t3_size, t4_pos, t4_size, t5_pos, t5_size]
+  //   centroids_ring = TrillCentroids.kr(i2c_bus, i2c_address_ring, noiseThreshold, prescalerOpt, t_recalibrate_ring);		
+	// 	SendReply.kr(Impulse.kr(10), "/trill_ring", centroids_ring);
+  //   ("trill ring initialized").postln;
+  // }).send(s);
 
+
+  s.sync;
+  /////////////////////////////////////
   // define the "looper"
+  /////////////////////////////////////
+
 	SynthDef("looper",{ 
 		// main arguments
 		arg t_recalibrate=0.0,
@@ -246,7 +266,7 @@ s.waitForBoot {
 		gate=1, 
     envbuf,
     //wow+flutter
-		effect1=0, effect2=0, wobble_amp=0.05, wobble_exp=39,
+		effect1=0, effect2=0, effect3=0, wobble_amp=0.05, wobble_exp=39,
 		flutter_amp=0.03, flutter_fixedfreq=6, flutter_variationfreq=2;
 		var wobble_rpm = 33;
 
@@ -296,7 +316,8 @@ s.waitForBoot {
 
 
 		// calculate the final rate
-		var rate=Lag.kr(lfoRate*(2*lfoForward-1),1)*BufRateScale.kr(buf);
+		var rate=Lag.kr(lfoRate*(2*lfoForward-1),0.1)*BufRateScale.kr(buf);
+		// var rate=Lag.kr(lfoRate*(2*lfoForward-1),1)*BufRateScale.kr(buf);
 		// modulate the start/stop
 		posStart = lfoStart;
 		posEnd = Clip.kr(posStart + lfoWindow,0,frames-1024);
@@ -385,7 +406,6 @@ s.waitForBoot {
 		// final output
 		Out.ar(0,snd*volume/3);
 		// Out.ar(0,snd*volume/5);
-		// Out.ar(0,snd*volume/5 + ping);
 	}).send(s);
 	
 	
@@ -395,9 +415,14 @@ s.waitForBoot {
 	// 	RecordBuf.ar(SoundIn.ar([0,1]),buf,0.0,recLevel,preLevel,loop:0,doneAction:2);
 	// }).send(s);
 
+  s.sync;
+  /////////////////////////////////////
+  // define the global effects
+  /////////////////////////////////////
+
 	// effects
 	SynthDef("effects",{
-		arg amp=1.0,effect1=0,effect2=0,delayTime=0.5;
+		arg amp=1.0,effect1=0,effect2=0,effect3=0,delayTime=0.5;
 
 		// collect the sound coming from the bus "0" on 2 channels (stereo)
 		var snd=In.ar(0,2);
@@ -425,7 +450,7 @@ s.waitForBoot {
 		// snd = CombC.ar(snd,0.5,delaytime:0.5,decaytime:1);
 
 		// add some reverb
-		snd = FreeVerb2.ar(snd[0],snd[1],0.5,0.5);
+		snd = ((1-effect3)*snd)+(Lag.kr(effect3,0.25)*FreeVerb2.ar(snd[0],snd[1],0.5,effect3));
 
 		// // add some analog chewing (PortedPlugins needed)
 		// snd = SelectX.ar(LFNoise2.kr(1/3).range(0,1),[
@@ -442,35 +467,17 @@ s.waitForBoot {
 	}).send(s);
 
   s.sync;
-  s.queryAllNodes(queryControls: false);
+  // s.queryAllNodes(queryControls: false);
 
   ~tr_bar = Synth(\trillSynth_bar);
   ~tr_hex = Synth(\trillSynth_hex);
   // ~tr_ring = Synth(\trillSynth_ring);
   ~max30102 = Synth(\max30102);
 
-	// load the ube class
-	u=Ube.new(s);
-
-  Routine {
-    u.loadTape(tape:2,filename:thisProcess.nowExecutingPath.dirname++"/flora_wowless.wav");
-    // u.loadTape(tape:1,filename:thisProcess.nowExecutingPath.dirname++"/kalimba.wav");
-
-    1.wait; // give time for buffer to load
-    u.playTape(tape:2,player:1,rate:0.5,db:20,timescale:1.0);
-    u.playTape(tape:2,player:2,rate:0.25,db:20,timescale:1.0);
-    // u.playTape(tape:2,player:3,rate:0.125,db:20,timescale:1.0);
-    2.do({arg v,i;
-        u.setLfoStartFreqDivisor(tape:2,player:1+i,val:30.rand+30);
-        u.setLfoWindowFreqDivisor(tape:2,player:1+i,val:5.rand+10);
-        u.setLfoAmpFreqDivisor(tape:2,player:1+i,val:10.rand+20);
-        u.setLfoPanFreqDivisor(tape:2,player:1+i,val:10.rand+20);
-    });
-    
-
-  }.play;
-
-
+  s.sync;
+  /////////////////////////////////////
+  // OSC definitions for the sensors
+  /////////////////////////////////////
   OSCdef(\max30102, {|msg| 
     
     if (max30102_pressed == true,{
@@ -617,62 +624,6 @@ s.waitForBoot {
     });
   }, "/trill_bar");
 
-
-/*
- OSCdef(\trill_ring, {|msg| 
-    // if (msg[3] > 0,{
-    // if (recording == false && msg[3] == 1,{
-    var tapenums = [1,2,3,4,5];
-    var effect1;
-    if (recording == false && msg[3] == 1,{
-      if (ring_pressed == false){
-        ring_pressed = true
-        // (msg[4] + " / " + msg[5]).postln;
-      };
-      if (msg[4] < 0.5, {
-        effect1 = msg[4].linlin(0,0.5,0,1);
-        // effect1 = msg[4].linlin(0,0.5,0,0.8).postln;
-      },{
-        effect1 = msg[4].linlin(0.5,1,1,0);
-        // effect1 = msg[4].linlin(0.5,1,0.8,0).postln;
-      });
-      sender.sendMsg("/ring_pressed", 1); // send value to touchdesigner
-      sender.sendMsg("/ring_location", msg[4]); // send touch location to touchdesigner
-      sender.sendMsg("/ring_pressure", msg[5]); // send touch pressure to touchdesigner
-      ("effect1: " + effect1).postln;
-      // 2.do({ arg v,i;
-        // var loopAmt = msg[4];
-        // var grainAmt = msg[4].linlin(0,1,1,0);   
-        // (loopAmt + " / " + grainAmt).postln;       
-        // u.setGrainLoopMix(tape:tapenums[v],player:1,loopAmt:loopAmt, grainAmt:grainAmt);
-
-        // change the grain envelope shape
-        // var envSelected = "env" + msg[4].linlin(0,1,0,4).floor;
-        // ("new env selected" + envSelected).postln;
-        // u.setGrainWinEnv(tape:tapenums[v],player:1,val:envSelected);
-        
-        // netAddr.sendMsg("/ring_loc_val", effect1); // send value to touchdesigner
-        
-        
-        // u.setEffect1(tape:tapenums[v],player:1,val:effect1);
-        // u.setEffect1(tape:tapenums[v],player:2,val:effect1);
-      // })
-
-    });
-
-    if (recording == false && msg[3] == 0,{
-        if (ring_pressed == true){
-          ring_pressed = false; 
-          ("off").postln;
-          sender.sendMsg("/ring_pressed", 0); // send value to touchdesigner
-          2.do({ arg v,i;
-            // u.setEffect1(tape:tapenums[v],player:1,val:0);
-          });
-        }
-    });
-  }, "/trill_ring");
- */
-
  OSCdef(\trill_hex, {|msg| 
     // if (msg[3] > 0,{
     // if (recording == false && msg[3] == 1,{
@@ -709,5 +660,34 @@ s.waitForBoot {
       }
     });
   }, "/trill_hex");
+
+
+  /////////////////////////////////////
+  // load the ube class and define the "looper"
+  /////////////////////////////////////
+	// load the ube class
+  s.sync;
+
+	u=Ube.new(s);
+
+  Routine {
+    u.loadTape(tape:2,filename:thisProcess.nowExecutingPath.dirname++"/flora_wowless.wav");
+    // u.loadTape(tape:1,filename:thisProcess.nowExecutingPath.dirname++"/kalimba.wav");
+
+    1.wait; // give time for buffer to load
+    u.playTape(tape:2,player:1,rate:0.5,db:20,timescale:1.0);
+    u.playTape(tape:2,player:2,rate:0.25,db:20,timescale:1.0);
+    // u.playTape(tape:2,player:3,rate:0.125,db:20,timescale:1.0);
+    2.do({arg v,i;
+        u.setLfoStartFreqDivisor(tape:2,player:1+i,val:30.rand+30);
+        u.setLfoWindowFreqDivisor(tape:2,player:1+i,val:5.rand+10);
+        u.setLfoAmpFreqDivisor(tape:2,player:1+i,val:10.rand+20);
+        u.setLfoPanFreqDivisor(tape:2,player:1+i,val:10.rand+20);
+    });
+    
+
+  }.play;
+
+
 
 }

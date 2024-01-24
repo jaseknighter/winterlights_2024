@@ -16,7 +16,7 @@ s.waitForBoot {
 	}).add;
 
 	s.sync;
-
+	// OSCFunc.trace(true); // Turn posting on
 	Synth(\osc_out); // start the synth
 
 	//osc definition for sending a message

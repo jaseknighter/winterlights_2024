@@ -206,6 +206,14 @@ Ube {
     syns.at("fx").set(\effect2,val);
 	}
 
+	setEffect3 {
+		arg tape=1,player=1,val=1.0;
+		var tapeid="tape"++tape;
+		var playid="player"++player++tapeid;
+		syns.at(playid).set(\effect3,val);
+    syns.at("fx").set(\effect3,val);
+	}
+
 	setEffectDelayTime {
 		arg tape=1,player=1,val=1;
 		var tapeid="tape"++tape;
