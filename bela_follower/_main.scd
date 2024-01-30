@@ -13,7 +13,7 @@ s.options.speakerMuted = 0;    // set true to mute the speaker amp and draw a li
 s.options.dacLevel = 0;       // sets the gain of the stereo audio dac (+dB)
 s.options.adcLevel = 0;       // sets the gain of the stereo audio adc (+dB)
 
-s.options.blockSize = 32; //16;
+s.options.blockSize = 128; //16;
 s.options.numInputBusChannels = 2; //10;
 s.options.numOutputBusChannels = 2;
 
@@ -101,14 +101,14 @@ s.waitForBoot {
   SynthDef(\trillSynth_ring1, {|t_recalibrate_ring=0.0|
     // returns an array with format: [num_active_touches, t1_pos, t1_size, t2_pos, t2_size, t3_pos, t3_size, t4_pos, t4_size, t5_pos, t5_size]
     centroids_ring = TrillCentroids.kr(i2c_bus, i2c_address_ring1, noiseThreshold, prescalerOpt, t_recalibrate_ring);		
-		SendReply.kr(Impulse.kr(10), "/trill_ring1", centroids_ring);
+		SendReply.kr(Impulse.kr(4), "/trill_ring1", centroids_ring);
     ("trill ring 1 initialized").postln;
   }).send(s);
 
   SynthDef(\trillSynth_ring2, {|t_recalibrate_ring=0.0|
     // returns an array with format: [num_active_touches, t1_pos, t1_size, t2_pos, t2_size, t3_pos, t3_size, t4_pos, t4_size, t5_pos, t5_size]
     centroids_ring = TrillCentroids.kr(i2c_bus, i2c_address_ring2, noiseThreshold, prescalerOpt, t_recalibrate_ring);		
-		SendReply.kr(Impulse.kr(10), "/trill_ring2", centroids_ring);
+		SendReply.kr(Impulse.kr(4), "/trill_ring2", centroids_ring);
     // ("trill ring 2 initialized").postln;
   }).send(s);
 

@@ -224,7 +224,7 @@ s.waitForBoot {
   SynthDef(\trillSynth_bar, {|t_recalibrate_bar=0.0|
     // returns an array with format: [num_active_touches, t1_pos, t1_size, t2_pos, t2_size, t3_pos, t3_size, t4_pos, t4_size, t5_pos, t5_size]
     centroids_bar = TrillCentroids.kr(i2c_bus, i2c_address_bar, noiseThreshold, prescalerOpt, t_recalibrate_bar);		
-    SendReply.kr(Impulse.kr(10), "/trill_bar", centroids_bar);
+    SendReply.kr(Impulse.kr(4), "/trill_bar", centroids_bar);
     ("trill bar initialized").postln;
   }).send(s);
 
@@ -258,7 +258,7 @@ s.waitForBoot {
     grainAmt=0.5, //amount of microgranulated sound to pass through (0 to 1)
     grainSize0=0.1,
     grainSize1=0.2,
-    gTriggerSpeed=10,
+    gTriggerSpeed=5,
     lfoStartFreqDivisor=30, //Rand(30,60),
 		lfoWindowFreqDivisor=100, //Rand(60,120),
 		lfoAmpFreqDivisor=10, //Rand(10,30),
@@ -338,7 +338,7 @@ s.waitForBoot {
 
 		// send out a trigger anytime the position is outside the window
 		LocalOut.kr(
-			Changed.kr(Stepper.kr(Impulse.kr(20),max:1000000000,
+			Changed.kr(Stepper.kr(Impulse.kr(10),max:1000000000,
 				step:(pos>posEnd)+(pos<posStart)
 			))
 		);
@@ -470,7 +470,9 @@ s.waitForBoot {
   // s.queryAllNodes(queryControls: false);
 
   ~tr_bar = Synth(\trillSynth_bar);
+  s.sync;
   ~tr_hex = Synth(\trillSynth_hex);
+  s.sync;
   // ~tr_ring = Synth(\trillSynth_ring);
   ~max30102 = Synth(\max30102);
 
