@@ -44,10 +44,10 @@ s.waitForBoot {
   var i2c_bus = 1;
   //var i2c_address = 0x18;
   var i2c_address_bar = 0x20; //
-  var i2c_address_hex = 0x40; //
-  var i2c_address_ring = 0x38; //
+  // var i2c_address_hex = 0x40; //
+  // var i2c_address_ring = 0x38; //
 
-  var noiseThreshold = 0.02; //0.02; // float: 0-0.0625, with 0.0625 being the highest noise thresh
+  var noiseThreshold = 0.04; //0.02; // float: 0-0.0625, with 0.0625 being the highest noise thresh
   var prescalerOpt = 2; // int: 1-8 with 1 being the highest sensitivity
   // var touchsigs = DC.ar(0).dup(3); // use 3 touches
   var centroids_bar;
@@ -135,18 +135,12 @@ s.waitForBoot {
       // effect1 = msg[4].linlin(0.5,1,0.8,0).postln;
     });
     ("effect1: " + effect1).postln;
-    sender.sendMsg("/fring1_location", effect1); // send touch location to touchdesigner
+    sender.sendMsg("/fring1_location", msg[1]); // send touch location to touchdesigner
     2.do({ arg v,i;        
-      var tapenums = [1,2,3,4,5];
-      u.setEffect1(tape:tapenums[v],player:1,val:effect1);
-      u.setEffect1(tape:tapenums[v],player:2,val:effect1);
-
-      //set effect3 (was supposed to be set by hex)
-      u.setEffect3(tape:tapenums[v],player:1,val:effect1);
-      u.setEffect3(tape:tapenums[v],player:2,val:effect1);
-    })
-
-
+        var tapenums = [1,2,3,4,5];
+        u.setEffect1(tape:tapenums[v],player:1,val:effect1);
+        u.setEffect1(tape:tapenums[v],player:2,val:effect1);
+      })
 
 	}, '/fring1_location', receiver);
 	
@@ -156,7 +150,7 @@ s.waitForBoot {
     // ("received ring1 pressure: " + msg[1]).postln;
 	}, '/fring1_pressure', receiver);
 
-//follower ring2 receiving code
+  //follower ring2 receiving code
 	OSCFunc({ arg msg, time, addr, recvPort;
 		// ("received ring pressed: " + [msg, time, addr, recvPort]).postln;
 		sender.sendMsg("/fring2_pressed", msg[1]); // send value to touchdesigner    
@@ -173,7 +167,7 @@ s.waitForBoot {
       effect3 = msg[1].linlin(0.5,1,1,0);
     });
     ("effect3: " + effect3).postln;
-    sender.sendMsg("/fring2_location", effect3); // send touch location to touchdesigner
+    sender.sendMsg("/fring2_location", msg[1]); // send touch location to touchdesigner
     2.do({ arg v,i;        
       var tapenums = [1,2,3,4,5];
       u.setEffect3(tape:tapenums[v],player:1,val:effect3);
@@ -190,36 +184,51 @@ s.waitForBoot {
 
   s.sync;
 
-//follower hex receiving code
+  //follower hex receiving code
 	OSCFunc({ arg msg, time, addr, recvPort;
-		// ("received ring pressed: " + [msg, time, addr, recvPort]).postln;
-		sender.sendMsg("/fhex_pressed", msg[1]); // send value to touchdesigner    
-    // ("received ring2 pressed: " + msg[1]).postln;
+    if (msg[1] == 1,{
+		  ("received hex pressed: " + msg[1]).postln;
+      if (hex_pressed == false){
+        hex_pressed = true;
+      };
+      sender.sendMsg("/hex_pressed", 1); // send value to touchdesigner
+    });
+
+    if (recording == false && msg[1] == 0,{
+      if (hex_pressed == true){
+        hex_pressed = false; 
+        ("off").postln;
+        // 2.do({ arg v,i;
+        //   u.setEffect2(tape:tapenums[v],player:1,val:0);
+        // });
+        sender.sendMsg("/hex_pressed", 0); // send value to touchdesigner
+        
+      }
+    });
+
 	}, '/fhex_pressed', receiver);
 	
   OSCFunc({ arg msg, time, addr, recvPort;
-    var effect3;
-		// ("received ring pressed: " + [msg, time, addr, recvPort]).postln;
-		// ("received ring1 location: " + msg[1]).postln;
-    if (msg[1] < 0.5, {
-      effect3 = msg[1].linlin(0,0.5,0,1);
-    },{
-      effect3 = msg[1].linlin(0.5,1,1,0);
+    if (hex_pressed = true,{
+      sender.sendMsg("/hex_location", msg[1]); // send touch location to touchdesigner  
     });
-    ("effect3: " + effect3).postln;
-    sender.sendMsg("/fhex_location", msg[1]); // send touch location to touchdesigner
-    2.do({ arg v,i;        
-      var tapenums = [1,2,3,4,5];
-      u.setEffect3(tape:tapenums[v],player:1,val:effect3);
-      u.setEffect3(tape:tapenums[v],player:2,val:effect3);
-    })
-
 	}, '/fhex_location', receiver);
 	
   OSCFunc({ arg msg, time, addr, recvPort;
 		// ("received ring pressed: " + [msg, time, addr, recvPort]).postln;
-		sender.sendMsg("/fhex_pressure", msg[1]); // send touch pressure to touchdesigner
-    // ("received ring2 pressure: " + msg[1]).postln;
+    var tapenums = [1,2,3,4,5];
+    var effect2 = msg[1].linlin(0,1,0,1);
+    if (hex_pressed = true,{
+  		sender.sendMsg("/fhex_pressure", msg[1]); // send touch pressure to touchdesigner
+      2.do({ arg v,i;
+        var dTime = (effect2)+0.1; //delayTimes[dIndex];
+        u.setEffect2(tape:tapenums[v],player:1,val:effect2);
+        u.setEffectDelayTime(tape:tapenums[v],player:1,val:dTime);
+        u.setEffect2(tape:tapenums[v],player:2,val:effect2);
+        u.setEffectDelayTime(tape:tapenums[v],player:2,val:dTime);
+      })
+
+    });
 	}, '/fhex_pressure', receiver);
 
   s.sync;
@@ -261,7 +270,7 @@ s.waitForBoot {
     // ("max30102 initialized").postln;
   }).send(s);
 
-  SynthDef(\trillSynth_bar, {|t_recalibrate_bar=0.0|
+  SynthDef(\trillSynth_bar, {|t_recalibrate_bar=1.0|
     // returns an array with format: [num_active_touches, t1_pos, t1_size, t2_pos, t2_size, t3_pos, t3_size, t4_pos, t4_size, t5_pos, t5_size]
     centroids_bar = TrillCentroids.kr(i2c_bus, i2c_address_bar, noiseThreshold, prescalerOpt, t_recalibrate_bar);		
     SendReply.kr(Impulse.kr(4), "/trill_bar", centroids_bar);
@@ -506,15 +515,6 @@ s.waitForBoot {
 		ReplaceOut.ar(0,snd*Lag.kr(amp));
 	}).send(s);
 
-  s.sync;
-  // s.queryAllNodes(queryControls: false);
-
-  ~tr_bar = Synth(\trillSynth_bar);
-  s.sync;
-  // ~tr_hex = Synth(\trillSynth_hex);
-  // s.sync;
-  // ~tr_ring = Synth(\trillSynth_ring);
-  ~max30102 = Synth(\max30102);
 
   s.sync;
   /////////////////////////////////////
@@ -666,50 +666,57 @@ s.waitForBoot {
     });
   }, "/trill_bar");
 
- OSCdef(\trill_hex, {|msg| 
-    // if (msg[3] > 0,{
-    // if (recording == false && msg[3] == 1,{
-    var tapenums = [1,2,3,4,5];
-    var effect2 = msg[5].linlin(0,1,0,1);
-    if (recording == false && msg[3] == 1,{
-      if (hex_pressed == false){
-        hex_pressed = true;
-      };
-      // (msg[4] + " / " + msg[5]).postln;
-      sender.sendMsg("/hex_pressed", 1); // send value to touchdesigner
-      sender.sendMsg("/hex_location", msg[4]); // send touch location to touchdesigner
-      sender.sendMsg("/hex_pressure", msg[5]); // send touch pressure to touchdesigner
-      2.do({ arg v,i;
-        var dTime = (effect2)+0.1; //delayTimes[dIndex];
-        u.setEffect2(tape:tapenums[v],player:1,val:effect2);
-        u.setEffectDelayTime(tape:tapenums[v],player:1,val:dTime);
-        u.setEffect2(tape:tapenums[v],player:2,val:effect2);
-        u.setEffectDelayTime(tape:tapenums[v],player:2,val:dTime);
-      })
+//  OSCdef(\trill_hex, {|msg| 
+//     // if (msg[3] > 0,{
+//     // if (recording == false && msg[3] == 1,{
+//     var tapenums = [1,2,3,4,5];
+//     var effect2 = msg[5].linlin(0,1,0,1);
+//     if (recording == false && msg[3] == 1,{
+//       if (hex_pressed == false){
+//         hex_pressed = true;
+//       };
+//       // (msg[4] + " / " + msg[5]).postln;
+//       sender.sendMsg("/hex_pressed", 1); // send value to touchdesigner
+//       sender.sendMsg("/hex_location", msg[4]); // send touch location to touchdesigner
+//       sender.sendMsg("/hex_pressure", msg[5]); // send touch pressure to touchdesigner
+//       2.do({ arg v,i;
+//         var dTime = (effect2)+0.1; //delayTimes[dIndex];
+//         u.setEffect2(tape:tapenums[v],player:1,val:effect2);
+//         u.setEffectDelayTime(tape:tapenums[v],player:1,val:dTime);
+//         u.setEffect2(tape:tapenums[v],player:2,val:effect2);
+//         u.setEffectDelayTime(tape:tapenums[v],player:2,val:dTime);
+//       })
 
-    });
+//     });
 
-    if (recording == false && msg[3] == 0,{
-      if (hex_pressed == true){
-        hex_pressed = false; 
-        ("off").postln;
-        2.do({ arg v,i;
-          u.setEffect2(tape:tapenums[v],player:1,val:0);
-        });
+//     if (recording == false && msg[3] == 0,{
+//       if (hex_pressed == true){
+//         hex_pressed = false; 
+//         ("off").postln;
+//         2.do({ arg v,i;
+//           u.setEffect2(tape:tapenums[v],player:1,val:0);
+//         });
 
-        sender.sendMsg("/hex_pressed", 0); // send value to touchdesigner
+//         sender.sendMsg("/hex_pressed", 0); // send value to touchdesigner
         
-      }
-    });
-  }, "/trill_hex");
+//       }
+//     });
+//   }, "/trill_hex");
 
+  s.sync;
+  // s.queryAllNodes(queryControls: false);
+  ~max30102 = Synth(\max30102);
+  s.sync;
+  // ~tr_hex = Synth(\trillSynth_hex);
+  // s.sync;
+  // ~tr_ring = Synth(\trillSynth_ring);
+  ~tr_bar = Synth(\trillSynth_bar);
 
   /////////////////////////////////////
   // load the ube class and define the "looper"
   /////////////////////////////////////
 	// load the ube class
   s.sync;
-
 	u=Ube.new(s);
 
   Routine {
@@ -729,7 +736,4 @@ s.waitForBoot {
     
 
   }.play;
-
-
-
 }

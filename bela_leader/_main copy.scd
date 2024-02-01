@@ -135,18 +135,12 @@ s.waitForBoot {
       // effect1 = msg[4].linlin(0.5,1,0.8,0).postln;
     });
     ("effect1: " + effect1).postln;
-    sender.sendMsg("/fring1_location", effect1); // send touch location to touchdesigner
+    sender.sendMsg("/fring1_location", msg[1]); // send touch location to touchdesigner
     2.do({ arg v,i;        
-      var tapenums = [1,2,3,4,5];
-      u.setEffect1(tape:tapenums[v],player:1,val:effect1);
-      u.setEffect1(tape:tapenums[v],player:2,val:effect1);
-
-      //set effect3 (was supposed to be set by hex)
-      u.setEffect3(tape:tapenums[v],player:1,val:effect1);
-      u.setEffect3(tape:tapenums[v],player:2,val:effect1);
-    })
-
-
+        var tapenums = [1,2,3,4,5];
+        u.setEffect1(tape:tapenums[v],player:1,val:effect1);
+        u.setEffect1(tape:tapenums[v],player:2,val:effect1);
+      })
 
 	}, '/fring1_location', receiver);
 	
@@ -173,7 +167,7 @@ s.waitForBoot {
       effect3 = msg[1].linlin(0.5,1,1,0);
     });
     ("effect3: " + effect3).postln;
-    sender.sendMsg("/fring2_location", effect3); // send touch location to touchdesigner
+    sender.sendMsg("/fring2_location", msg[1]); // send touch location to touchdesigner
     2.do({ arg v,i;        
       var tapenums = [1,2,3,4,5];
       u.setEffect3(tape:tapenums[v],player:1,val:effect3);

@@ -114,7 +114,7 @@ s.waitForBoot {
   }).send(s);
   s.sync;
 
-  SynthDef(\trillSynth_hex, {|t_recalibrate_hex=0.0|
+  SynthDef(\trillSynth_hex, {|t_recalibrate_hex=1.0|
     // returns an array with format: [num_active_touches, t1_pos, t1_size, t2_pos, t2_size, t3_pos, t3_size, t4_pos, t4_size, t5_pos, t5_size]
     centroids_hex = TrillCentroids.kr(i2c_bus, i2c_address_hex, noiseThreshold, prescalerOpt, t_recalibrate_hex);		
 		SendReply.kr(Impulse.kr(2), "/trill_hex", centroids_hex);
