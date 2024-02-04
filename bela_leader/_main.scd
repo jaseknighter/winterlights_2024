@@ -602,7 +602,14 @@ s.waitForBoot {
   }, "/max30102");
 
   OSCdef(\trill_bar, {|msg| 
-    // if (msg[3] > 0,{
+    // some safety code to make sure the code doesn't get stuck in recording mode
+    if (recording == true && msg[3] == 1,{
+      Routine {
+        10.wait; 
+        recording = false;
+      }.play;
+    });
+
     if (recording == false && msg[3] == 1,{
       // recording.postln;
       // var touch1
